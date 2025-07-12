@@ -1,0 +1,5 @@
+py-cord[voice]        # Discord API (+ voice receive)  :contentReference[oaicite:0]{index=0}
+python-dotenv
+openai
+fpdf2
+ffmpeg-python
