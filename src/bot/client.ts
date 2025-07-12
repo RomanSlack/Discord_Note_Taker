@@ -41,7 +41,7 @@ class DiscordClientManager {
         Partials.GuildMember
       ],
       presence: {
-        status: settingsManager.getBotSettings().presenceStatus as PresenceUpdateStatus,
+        status: settingsManager.getBotSettings().presenceStatus as any,
         activities: [{
           name: settingsManager.getBotSettings().activityName,
           type: ActivityType.Listening
@@ -200,10 +200,10 @@ class DiscordClientManager {
       const botSettings = settingsManager.getBotSettings();
       
       await this.client.user.setPresence({
-        status: botSettings.presenceStatus as PresenceUpdateStatus,
+        status: botSettings.presenceStatus as any,
         activities: [{
           name: botSettings.activityName,
-          type: ActivityType[botSettings.activityType]
+          type: ActivityType[botSettings.activityType as any] as any
         }]
       });
 
