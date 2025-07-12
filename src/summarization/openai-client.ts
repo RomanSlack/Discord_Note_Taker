@@ -98,11 +98,23 @@ export class OpenAIClient extends EventEmitter {
   private totalTokens = 0;
   private requestCount = 0;
 
-  // GPT-4.1 mini pricing (per 1K tokens)
+  // OpenAI model pricing (per 1K tokens)
   private readonly PRICING = {
     'gpt-4o-mini': {
       input: 0.000150,  // $0.150 per 1M input tokens
       output: 0.000600  // $0.600 per 1M output tokens
+    },
+    'gpt-4o': {
+      input: 0.005000,  // $5.00 per 1M input tokens
+      output: 0.015000  // $15.00 per 1M output tokens
+    },
+    'gpt-4-turbo': {
+      input: 0.010000,  // $10.00 per 1M input tokens
+      output: 0.030000  // $30.00 per 1M output tokens
+    },
+    'gpt-3.5-turbo': {
+      input: 0.000500,  // $0.50 per 1M input tokens
+      output: 0.001500  // $1.50 per 1M output tokens
     }
   };
 
@@ -115,7 +127,7 @@ export class OpenAIClient extends EventEmitter {
 
     this.config = {
       apiKey: apiKey || config.openAiApiKey!,
-      model: 'gpt-4o-mini', // GPT-4.1 mini for cost optimization
+      model: config.openAiModel || 'gpt-4o-mini', // Configurable model with fallback
       maxTokens: 4096,
       temperature: 0.3, // Lower temperature for consistent summarization
       topP: 0.9,

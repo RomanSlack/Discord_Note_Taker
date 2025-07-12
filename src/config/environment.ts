@@ -18,6 +18,7 @@ export interface BotConfiguration {
   // API Configuration
   assemblyAiApiKey?: string;
   openAiApiKey?: string;
+  openAiModel?: string;
   
   // Logging Configuration
   logLevel: string;
@@ -92,6 +93,10 @@ class EnvironmentValidator {
       
       if (process.env.OPENAI_API_KEY) {
         config.openAiApiKey = process.env.OPENAI_API_KEY;
+      }
+      
+      if (process.env.OPENAI_MODEL) {
+        config.openAiModel = process.env.OPENAI_MODEL;
       }
 
       // Validate log level
