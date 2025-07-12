@@ -1,7 +1,7 @@
 import { Transform, Readable } from 'stream';
 import { createLogger } from '@utils/logger';
 import ffmpegPath from 'ffmpeg-static';
-import { spawn } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
 
 const logger = createLogger('AudioConverter');
@@ -24,7 +24,7 @@ export interface ConversionOptions {
 
 export class AudioConverter extends Transform {
   private options: ConversionOptions;
-  private ffmpegCommand: ffmpeg.FfmpegCommand | null = null;
+  private ffmpegProcess: ChildProcess | null = null;
   private inputBuffer: Buffer[] = [];
   private totalInputBytes: number = 0;
   private totalOutputBytes: number = 0;
@@ -49,7 +49,7 @@ export class AudioConverter extends Transform {
     });
   }
 
-  public _transform(chunk: Buffer, encoding: BufferEncoding, callback: (error?: Error, data?: Buffer) => void): void {
+  public override _transform(chunk: Buffer, encoding: BufferEncoding, callback: (error?: Error, data?: Buffer) => void): void {
     try {
       this.inputBuffer.push(chunk);
       this.totalInputBytes += chunk.length;
@@ -78,7 +78,7 @@ export class AudioConverter extends Transform {
     }
   }
 
-  public _flush(callback: (error?: Error, data?: Buffer) => void): void {
+  public override _flush(callback: (error?: Error, data?: Buffer) => void): void {
     // Process any remaining buffer
     if (this.inputBuffer.length > 0) {
       this.processBuffer().then(result => {

@@ -3,7 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import { createLogger } from '@utils/logger';
-import { MeetingSummaryReport, ActionItem, Decision } from './meeting-summarizer';
+import { MeetingSummaryReport } from './meeting-summarizer';
+import { ActionItem, Decision } from './openai-client';
 
 const logger = createLogger('PDFGenerator');
 
@@ -131,8 +132,8 @@ export class PDFGenerator extends EventEmitter {
       doc.end();
 
       // Wait for stream to finish
-      await new Promise((resolve, reject) => {
-        stream.on('finish', resolve);
+      await new Promise<void>((resolve, reject) => {
+        stream.on('finish', () => resolve());
         stream.on('error', reject);
       });
 
@@ -327,8 +328,7 @@ export class PDFGenerator extends EventEmitter {
       doc.fontSize(72)
          .fillColor('#CCCCCC', 0.3)
          .text(options.watermark, 0, 400, {
-           align: 'center',
-           angle: -45
+           align: 'center'
          });
     }
   }

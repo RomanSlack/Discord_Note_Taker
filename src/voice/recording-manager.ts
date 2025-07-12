@@ -146,6 +146,7 @@ export class RecordingManager extends EventEmitter {
         channelId: connection.joinConfig.channelId || 'unknown',
         channelName,
         startTime: new Date(),
+        endTime: undefined as Date | undefined,
         state: 'recording' as any,
         participants: new Map(),
         totalDuration: 0,
@@ -170,8 +171,9 @@ export class RecordingManager extends EventEmitter {
         getRecordingState: () => session.state,
         stopRecording: async () => {
           session.state = 'stopped' as any;
-          session.endTime = new Date();
-          session.totalDuration = session.endTime.getTime() - session.startTime.getTime();
+          const endTime = new Date();
+          session.endTime = endTime;
+          session.totalDuration = endTime.getTime() - session.startTime.getTime();
           return session;
         },
         pauseRecording: async () => {

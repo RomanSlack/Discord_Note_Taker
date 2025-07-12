@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder, ChatInputCommandInteraction, PermissionFlagsBits } from 'discord.js';
 import { createLogger } from '@utils/logger';
 import { config } from '@config/environment';
 import { voiceConnectionManager } from '@voice/connection';
@@ -61,7 +61,7 @@ function initializeTranscriptionSystem(): void {
 }
 
 export interface Command {
-  data: SlashCommandBuilder;
+  data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
 }
 
@@ -241,6 +241,15 @@ async function handleTranscribeStart(interaction: ChatInputCommandInteraction): 
     if (!voiceChannel || (voiceChannel.type !== 2 && voiceChannel.type !== 13)) {
       await interaction.reply({
         content: 'Please specify a voice channel or join one yourself.',
+        ephemeral: true
+      });
+      return;
+    }
+
+    // Type guard to ensure we have a voice or stage channel
+    if (!('bitrate' in voiceChannel)) {
+      await interaction.reply({
+        content: 'The specified channel is not a voice channel.',
         ephemeral: true
       });
       return;

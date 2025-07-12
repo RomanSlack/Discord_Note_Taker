@@ -1,5 +1,6 @@
 import { 
   SlashCommandBuilder, 
+  SlashCommandSubcommandsOnlyBuilder,
   ChatInputCommandInteraction, 
   AttachmentBuilder,
   EmbedBuilder 
@@ -12,7 +13,7 @@ import { TranscriptManager } from '@transcription/transcript-manager';
 const logger = createLogger('SummarizationCommands');
 
 export interface Command {
-  data: SlashCommandBuilder;
+  data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
 }
 
@@ -424,7 +425,39 @@ async function handleGeneratePDF(
     });
 
     // Generate actual meeting summary report from real data
-    const report = await meetingSummarizer.generateMeetingReport(session);
+    const summaryResult = await summarizer.generateManualSummary(session.sessionId, 'final');
+    
+    if (!summaryResult) {
+      await interaction.editReply({
+        content: 'Failed to generate summary for the session.'
+      });
+      return;
+    }
+
+    // Convert SummarizationResult to MeetingSummaryReport format
+    const report: MeetingSummaryReport = {
+      sessionId: session.sessionId,
+      meetingTitle: `Meeting - ${new Date(session.startTime).toLocaleDateString()}`,
+      startTime: session.startTime,
+      endTime: session.endTime || new Date(),
+      duration: session.endTime ? session.endTime.getTime() - session.startTime.getTime() : 0,
+      participants: [],
+      executiveSummary: summaryResult.summary,
+      keyDiscussions: summaryResult.keyPoints || [],
+      decisions: summaryResult.decisions || [],
+      actionItems: summaryResult.actionItems || [],
+      nextSteps: [],
+      attachments: [],
+      metadata: {
+        segmentCount: 1,
+        totalTranscripts: 1,
+        totalWords: summaryResult.summary.split(' ').length,
+        averageConfidence: summaryResult.confidence || 0.8,
+        summarizationCost: 0.01,
+        processingTime: 0,
+        qualityScore: summaryResult.confidence || 0.8
+      }
+    };
 
     const options: Partial<PDFGenerationOptions> = {
       template: (interaction.options.getString('template') as any) || 'professional',

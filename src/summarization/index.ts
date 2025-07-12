@@ -77,7 +77,7 @@ export class SummarizationSystem extends EventEmitter {
       }
 
       // Initialize OpenAI client
-      this.openAIClient = new OpenAI(config.openAiApiKey);
+      this.openAIClient = new OpenAIClient(config.openAiApiKey);
       await this.testOpenAIConnection();
 
       // Initialize PDF generator
