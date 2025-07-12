@@ -322,9 +322,43 @@ export class RecordingManager extends EventEmitter {
       totalDuration,
       totalParticipants,
       averageSessionDuration: allSessions.length > 0 ? totalDuration / allSessions.length : 0,
-      totalStorageUsed: 0, // TODO: Calculate actual storage usage
+      totalStorageUsed: await this.calculateStorageUsage(),
       topUsers
     };
+  }
+
+  private async calculateStorageUsage(): Promise<number> {
+    try {
+      const fs = await import('fs').then(m => m.promises);
+      const path = await import('path');
+      
+      let totalSize = 0;
+      
+      // Calculate storage usage for all recorders
+      for (const [guildId, recorder] of this.recorders) {
+        const storageLocation = recorder.getStorageLocation();
+        if (storageLocation) {
+          try {
+            const files = await fs.readdir(storageLocation, { withFileTypes: true });
+            for (const file of files) {
+              if (file.isFile()) {
+                const filePath = path.join(storageLocation, file.name);
+                const stats = await fs.stat(filePath);
+                totalSize += stats.size;
+              }
+            }
+          } catch (error) {
+            // Storage location may not exist yet
+            logger.debug(`Storage location not accessible for guild ${guildId}:`, error);
+          }
+        }
+      }
+      
+      return totalSize;
+    } catch (error) {
+      logger.error('Failed to calculate storage usage:', error);
+      return 0;
+    }
   }
 
   private setupRecorderEventHandlers(guildId: string, recorder: MultiTrackRecorder): void {

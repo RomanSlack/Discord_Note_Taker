@@ -1,6 +1,7 @@
 import { Transform, Readable } from 'stream';
 import { createLogger } from '@utils/logger';
-import * as ffmpeg from 'fluent-ffmpeg';
+import ffmpegPath from 'ffmpeg-static';
+import { spawn } from 'child_process';
 import { promisify } from 'util';
 
 const logger = createLogger('AudioConverter');
@@ -261,59 +262,74 @@ export class AudioConverter extends Transform {
     const { inputFormat, outputFormat } = this.options;
 
     return new Promise((resolve, reject) => {
+      if (!ffmpegPath) {
+        reject(new Error('FFmpeg binary not found'));
+        return;
+      }
+
       const chunks: Buffer[] = [];
       
-      // Create readable stream from input data
-      const inputStream = new Readable({
-        read() {
-          this.push(inputData);
-          this.push(null); // End of stream
+      // Build FFmpeg arguments
+      const args = [
+        '-f', 's16le',
+        '-ar', inputFormat.sampleRate.toString(),
+        '-ac', inputFormat.channels.toString(),
+        '-i', 'pipe:0', // Read from stdin
+        '-f', 's16le',
+        '-ar', outputFormat.sampleRate.toString(),
+        '-ac', outputFormat.channels.toString()
+      ];
+
+      // Add filters if needed
+      const filters: string[] = [];
+      
+      if (this.options.quality === 'high') {
+        filters.push('aresample=resampler=soxr:precision=28');
+      }
+      
+      if (this.options.enableNoiseReduction) {
+        filters.push('afftdn=nf=-25');
+      }
+      
+      if (this.options.enableNormalization) {
+        filters.push('dynaudnorm=f=75:g=25:p=0.95');
+      }
+
+      if (filters.length > 0) {
+        args.push('-af', filters.join(','));
+      }
+
+      args.push('pipe:1'); // Write to stdout
+
+      const ffmpegProcess = spawn(ffmpegPath, args);
+
+      // Handle output
+      ffmpegProcess.stdout.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+
+      // Handle errors
+      ffmpegProcess.stderr.on('data', (data) => {
+        logger.debug('FFmpeg stderr:', data.toString());
+      });
+
+      ffmpegProcess.on('error', (error) => {
+        logger.error('FFmpeg process error:', error);
+        reject(error);
+      });
+
+      ffmpegProcess.on('close', (code) => {
+        if (code === 0) {
+          const result = Buffer.concat(chunks);
+          resolve(result);
+        } else {
+          reject(new Error(`FFmpeg process exited with code ${code}`));
         }
       });
 
-      const command = ffmpeg(inputStream)
-        .inputFormat('s16le')
-        .inputOptions([
-          `-ar ${inputFormat.sampleRate}`,
-          `-ac ${inputFormat.channels}`
-        ])
-        .audioCodec('pcm_s16le')
-        .audioFrequency(outputFormat.sampleRate)
-        .audioChannels(outputFormat.channels)
-        .format('s16le');
-
-      // Add quality options
-      if (this.options.quality === 'high') {
-        command.audioFilters(['aresample=resampler=soxr:precision=28']);
-      }
-
-      // Add noise reduction if enabled
-      if (this.options.enableNoiseReduction) {
-        command.audioFilters(['afftdn=nf=-25']);
-      }
-
-      // Add normalization if enabled
-      if (this.options.enableNormalization) {
-        command.audioFilters(['dynaudnorm=f=75:g=25:p=0.95']);
-      }
-
-      command
-        .on('error', (error) => {
-          logger.error('FFmpeg conversion error:', error);
-          reject(error);
-        })
-        .on('end', () => {
-          const result = Buffer.concat(chunks);
-          resolve(result);
-        })
-        .stream()
-        .on('data', (chunk: Buffer) => {
-          chunks.push(chunk);
-        })
-        .on('error', (error) => {
-          logger.error('FFmpeg output stream error:', error);
-          reject(error);
-        });
+      // Write input data to stdin
+      ffmpegProcess.stdin.write(inputData);
+      ffmpegProcess.stdin.end();
     });
   }
 

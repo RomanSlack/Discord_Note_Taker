@@ -5,7 +5,8 @@ import { promisify } from 'util';
 import { createLogger, withLogging } from '@utils/logger';
 import { config } from '@config/environment';
 import { TranscriptionResult } from './assemblyai-client';
-import * as lz4 from 'lz4';
+// LZ4 compression temporarily disabled due to build issues
+// import { compress } from 'lz4-napi';
 
 const logger = createLogger('TranscriptManager');
 
@@ -499,7 +500,7 @@ export class TranscriptManager extends EventEmitter {
   private async saveSegment(session: TranscriptSession, segment: TranscriptSegment): Promise<void> {
     try {
       const sessionDir = path.join(this.storageDir, session.sessionId);
-      const segmentFile = path.join(sessionDir, `segment_${segment.windowIndex}.json.lz4`);
+      const segmentFile = path.join(sessionDir, `segment_${segment.windowIndex}.json`);
 
       // Prepare segment data for compression
       const segmentData = {
@@ -513,13 +514,13 @@ export class TranscriptManager extends EventEmitter {
       const jsonData = JSON.stringify(segmentData, null, 2);
       const uncompressedBuffer = Buffer.from(jsonData, 'utf-8');
 
-      // Compress using LZ4
+      // Compression temporarily disabled
       const compressionStart = Date.now();
-      const compressedBuffer = lz4.encode(uncompressedBuffer);
+      const compressedBuffer = uncompressedBuffer; // No compression for now
       const compressionTime = Date.now() - compressionStart;
 
-      // Calculate compression ratio
-      segment.compressionRatio = uncompressedBuffer.length / compressedBuffer.length;
+      // Calculate compression ratio (will be 1.0 without compression)
+      segment.compressionRatio = 1.0;
 
       // Update session compression stats
       session.compressionStats.totalUncompressedSize += uncompressedBuffer.length;

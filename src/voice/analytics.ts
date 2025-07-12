@@ -827,13 +827,63 @@ export class RecordingAnalytics extends EventEmitter {
   }
 
   private async loadAnalyticsData(): Promise<void> {
-    // In a real implementation, this would load from persistent storage
-    logger.debug('Analytics data loading completed (placeholder)');
+    try {
+      const fs = await import('fs').then(m => m.promises);
+      const path = await import('path');
+      
+      const dataPath = path.join(this.storageLocation, 'analytics.json');
+      try {
+        await fs.access(dataPath);
+        const data = await fs.readFile(dataPath, 'utf8');
+        const parsedData = JSON.parse(data);
+        
+        // Restore analytics data from file
+        this.analytics.sessionMetrics = parsedData.sessionMetrics || {};
+        this.analytics.userMetrics = parsedData.userMetrics || {};
+        this.analytics.qualityMetrics = parsedData.qualityMetrics || {};
+        this.analytics.performanceMetrics = parsedData.performanceMetrics || {};
+        
+        logger.debug('Analytics data loaded successfully', { 
+          sessions: Object.keys(this.analytics.sessionMetrics).length,
+          users: Object.keys(this.analytics.userMetrics).length 
+        });
+      } catch (error: any) {
+        if (error.code !== 'ENOENT') {
+          throw error;
+        }
+        logger.debug('No existing analytics data found, starting fresh');
+      }
+    } catch (error) {
+      logger.error('Failed to load analytics data:', error);
+    }
   }
 
   private async saveAnalyticsData(): Promise<void> {
-    // In a real implementation, this would save to persistent storage
-    logger.debug('Analytics data saving completed (placeholder)');
+    try {
+      const fs = await import('fs').then(m => m.promises);
+      const path = await import('path');
+      
+      // Ensure storage directory exists
+      await fs.mkdir(this.storageLocation, { recursive: true });
+      
+      const dataPath = path.join(this.storageLocation, 'analytics.json');
+      const dataToSave = {
+        sessionMetrics: this.analytics.sessionMetrics,
+        userMetrics: this.analytics.userMetrics,
+        qualityMetrics: this.analytics.qualityMetrics,
+        performanceMetrics: this.analytics.performanceMetrics,
+        lastSaved: new Date().toISOString()
+      };
+      
+      await fs.writeFile(dataPath, JSON.stringify(dataToSave, null, 2), 'utf8');
+      
+      logger.debug('Analytics data saved successfully', {
+        path: dataPath,
+        size: JSON.stringify(dataToSave).length
+      });
+    } catch (error) {
+      logger.error('Failed to save analytics data:', error);
+    }
   }
 
   public async cleanup(): Promise<void> {

@@ -423,35 +423,8 @@ async function handleGeneratePDF(
       content: '📄 Generating PDF report... This may take up to 60 seconds.'
     });
 
-    // Create a mock meeting summary report
-    // In a real implementation, this would use the actual summarizer
-    const mockReport: MeetingSummaryReport = {
-      sessionId: session.sessionId,
-      meetingTitle: `Meeting in ${session.channelName}`,
-      startTime: session.startTime,
-      endTime: session.endTime || new Date(),
-      duration: session.totalDuration,
-      participants: ['Speaker 1', 'Speaker 2', 'Speaker 3'], // Mock data
-      executiveSummary: 'This meeting covered important project updates and planning for the next quarter.',
-      keyDiscussions: [
-        'Reviewed project milestones and deliverables',
-        'Discussed resource allocation for Q2',
-        'Analyzed market feedback and user requirements'
-      ],
-      decisions: [],
-      actionItems: [],
-      nextSteps: ['Follow up on action items', 'Schedule next meeting'],
-      attachments: [],
-      metadata: {
-        segmentCount: session.segments.length,
-        totalTranscripts: session.totalTranscripts,
-        totalWords: session.totalWords,
-        averageConfidence: session.averageConfidence,
-        summarizationCost: 0.25,
-        processingTime: 2500,
-        qualityScore: 85
-      }
-    };
+    // Generate actual meeting summary report from real data
+    const report = await meetingSummarizer.generateMeetingReport(session);
 
     const options: Partial<PDFGenerationOptions> = {
       template: (interaction.options.getString('template') as any) || 'professional',
@@ -459,7 +432,7 @@ async function handleGeneratePDF(
       includeMetadata: interaction.options.getBoolean('include_metadata') ?? true
     };
 
-    const result = await pdfGenerator.generateReport(mockReport, options);
+    const result = await pdfGenerator.generateReport(report, options);
 
     // Create attachment
     const attachment = new AttachmentBuilder(result.filePath, {

@@ -302,8 +302,8 @@ export class VoiceReceiver {
       endTime: segment.endTime.toISOString()
     });
 
-    // TODO: Emit event to transcription service
-    // EventEmitter or similar can be used here
+    // Emit audio segment to transcription service
+    this.emit('audio-segment', segment);
   }
 
   private startSegmentTimer(): void {
@@ -336,8 +336,12 @@ export class VoiceReceiver {
         windowEnd: now.toISOString()
       });
 
-      // TODO: Process segments for transcription
-      // This is where we'll batch segments for transcription services
+      // Process segments for transcription
+      this.emit('segment-window-complete', { 
+        segments: recentSegments,
+        windowStart,
+        windowEnd: now 
+      });
     }
 
     // Clean up old segments (keep last hour)
