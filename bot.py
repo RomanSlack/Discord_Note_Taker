@@ -111,6 +111,47 @@ async def status(inter: discord.ApplicationContext):
         ephemeral=True
     )
 
+@bot.slash_command(description="Transcribe & summarise an existing WAV")
+async def process(
+    inter: discord.ApplicationContext,
+    filename: discord.Option(str, description="WAV file in /recordings")
+):
+    """
+    Example:
+      /process 20250712_171530.wav
+    """
+    await inter.response.defer(ephemeral=True)
+
+    # Reject if a recording session is still running
+    if session.active:
+        return await inter.followup.send(
+            "⚠️ Cannot process files while recording. Stop the session first.",
+            ephemeral=True
+        )
+
+    # Validate filename & path
+    wav_path = RECORD_DIR / filename
+    if not wav_path.exists() or not wav_path.is_file() or wav_path.suffix.lower() != ".wav":
+        return await inter.followup.send(
+            f"❌ File `{filename}` not found in `{RECORD_DIR}/`.",
+            ephemeral=True
+        )
+
+    await inter.followup.send("⏳ Processing file…", ephemeral=True)
+
+    # ── pipeline ─────────────────────────────────────────
+    transcript = transcribe(wav_path)
+    md_summary = summarize(transcript)
+    pdf_path   = SUMMARY_DIR / f"processed_{filename[:-4]}.pdf"
+    pdf_from_markdown(md_summary, pdf_path)
+
+    await inter.user.send(
+        f"📄 Summary for `{filename}`:",
+        file=discord.File(pdf_path)
+    )
+    await inter.followup.send("✅ Done! Check your DMs.", ephemeral=True)
+
+
 @bot.event
 async def on_ready():
     await bot.sync_commands()
