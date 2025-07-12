@@ -3,8 +3,8 @@ import { REST, Routes } from 'discord.js';
 import { config } from '../src/config/environment';
 import { getAllCommands } from '../src/bot/commands';
 import { createLogger } from '../src/utils/logger';
-import SummarizationSystem from '../src/summarization/index';
-import TranscriptManager from '../src/transcription/transcript-manager';
+// import SummarizationSystem from '../src/summarization/index';
+// import TranscriptManager from '../src/transcription/transcript-manager';
 
 const logger = createLogger('CommandDeploy');
 
@@ -13,18 +13,18 @@ async function deployCommands() {
     logger.info('Starting command deployment...');
 
     // Initialize summarization system if OpenAI key is available
-    let summarizationSystem: SummarizationSystem | undefined;
-    if (config.openAiApiKey) {
-      try {
-        const transcriptManager = new TranscriptManager('./transcripts');
-        summarizationSystem = new SummarizationSystem(transcriptManager);
-        await summarizationSystem.initialize();
-        logger.info('Summarization system initialized for command deployment');
-      } catch (error) {
-        logger.warn('Failed to initialize summarization system for command deployment:', error);
-        summarizationSystem = undefined;
-      }
-    }
+    let summarizationSystem: any = undefined;
+    // if (config.openAiApiKey) {
+    //   try {
+    //     const transcriptManager = new TranscriptManager('./transcripts');
+    //     summarizationSystem = new SummarizationSystem(transcriptManager);
+    //     await summarizationSystem.initialize();
+    //     logger.info('Summarization system initialized for command deployment');
+    //   } catch (error) {
+    //     logger.warn('Failed to initialize summarization system for command deployment:', error);
+    //     summarizationSystem = undefined;
+    //   }
+    // }
 
     // Get all available commands (including summarization commands if available)
     const allCommands = getAllCommands(summarizationSystem);

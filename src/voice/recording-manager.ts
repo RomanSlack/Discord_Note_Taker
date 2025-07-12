@@ -588,9 +588,12 @@ export class RecordingManager extends EventEmitter {
       // Remove oldest 25% of recordings
       const toRemove = Math.floor(sessionDirs.length * 0.25);
       for (let i = 0; i < toRemove; i++) {
-        const dirPath = path.join(storageDir, sessionDirs[i].name);
-        await fs.promises.rm(dirPath, { recursive: true, force: true });
-        logger.debug('Removed old recording directory', { path: dirPath });
+        const sessionDir = sessionDirs[i];
+        if (sessionDir) {
+          const dirPath = path.join(storageDir, sessionDir.name);
+          await fs.promises.rm(dirPath, { recursive: true, force: true });
+          logger.debug('Removed old recording directory', { path: dirPath });
+        }
       }
 
       logger.info('Old recordings cleanup completed', { removed: toRemove });

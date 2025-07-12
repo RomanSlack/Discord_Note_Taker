@@ -2,8 +2,8 @@ import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder, ChatInputComma
 import { createLogger } from '@utils/logger';
 import { voiceConnectionManager } from '@voice/connection';
 import { recordCommand } from '@voice/recording-commands';
-import { transcribeCommand } from '@transcription/transcription-commands';
-import SummarizationSystem from '@summarization/index';
+// import { transcribeCommand } from '@transcription/transcription-commands';
+// import SummarizationSystem from '@summarization/index';
 
 const logger = createLogger('Commands');
 
@@ -214,14 +214,14 @@ function formatUptime(uptime: number): string {
 }
 
 // Function to get all commands including dynamic summarization commands
-export function getAllCommands(summarizationSystem?: SummarizationSystem): Command[] {
+export function getAllCommands(summarizationSystem?: any): Command[] {
   const baseCommands = [
     joinCommand,
     leaveCommand,
     statusCommand,
     healthCommand,
-    recordCommand,
-    transcribeCommand
+    recordCommand
+    // transcribeCommand
   ];
 
   // Add summarization commands if system is available and initialized
@@ -239,8 +239,8 @@ export const commands: Command[] = [
   leaveCommand,
   statusCommand,
   healthCommand,
-  recordCommand,
-  transcribeCommand
+  recordCommand
+  // transcribeCommand
 ];
 
 export default commands;

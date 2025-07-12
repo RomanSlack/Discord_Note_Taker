@@ -3,7 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@utils/logger';
-import { config } from '@config/environment';
 
 const logger = createLogger('AudioStorage');
 
@@ -425,7 +424,7 @@ export class AudioStorage extends EventEmitter {
         }
       }
 
-      for (const [userId, userFiles] of userFileCounts) {
+      for (const [, userFiles] of userFileCounts) {
         if (userFiles.length > cleanupPolicy.maxFilesPerUser) {
           const sortedUserFiles = userFiles.sort((a, b) => a.created.getTime() - b.created.getTime());
           const toRemove = sortedUserFiles.slice(0, userFiles.length - cleanupPolicy.maxFilesPerUser);
@@ -447,7 +446,7 @@ export class AudioStorage extends EventEmitter {
         }
       }
 
-      for (const [sessionId, sessionFiles] of sessionFileCounts) {
+      for (const [, sessionFiles] of sessionFileCounts) {
         if (sessionFiles.length > cleanupPolicy.maxFilesPerSession) {
           const sortedSessionFiles = sessionFiles.sort((a, b) => a.created.getTime() - b.created.getTime());
           const toRemove = sortedSessionFiles.slice(0, sessionFiles.length - cleanupPolicy.maxFilesPerSession);
@@ -661,7 +660,7 @@ export class AudioStorage extends EventEmitter {
   private encryptData(data: Buffer): Buffer {
     const algorithm = 'aes-256-gcm';
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher(algorithm, this.encryptionKey);
+    const cipher = crypto.createCipheriv(algorithm, this.encryptionKey, iv);
     
     const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
     const authTag = (cipher as any).getAuthTag();
@@ -676,7 +675,7 @@ export class AudioStorage extends EventEmitter {
     const authTag = data.slice(16, 32);
     const encrypted = data.slice(32);
     
-    const decipher = crypto.createDecipher(algorithm, this.encryptionKey);
+    const decipher = crypto.createDecipheriv(algorithm, this.encryptionKey, iv);
     (decipher as any).setAuthTag(authTag);
     
     return Buffer.concat([decipher.update(encrypted), decipher.final()]);

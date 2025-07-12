@@ -1,8 +1,4 @@
-import { Transform, PassThrough } from 'stream';
 import { createLogger } from '@utils/logger';
-import { settingsManager } from '@config/settings';
-import * as fs from 'fs';
-import * as path from 'path';
 
 const logger = createLogger('AudioProcessor');
 
@@ -53,7 +49,6 @@ export class AudioProcessor {
   
   // Buffer management
   private readonly maxBufferTime = 5000; // 5 seconds max buffer
-  private readonly minBufferTime = 100; // 100ms min buffer
   private buffers: Map<string, AudioBuffer[]> = new Map();
   private statistics: Map<string, AudioStatistics> = new Map();
   
@@ -577,12 +572,17 @@ export class AudioProcessor {
     const now = Date.now();
     const cutoffTime = now - this.maxBufferTime;
     
-    while (userBuffer.length > 0 && userBuffer[0].timestamp.getTime() < cutoffTime) {
-      userBuffer.shift();
+    while (userBuffer.length > 0) {
+      const firstBuffer = userBuffer[0];
+      if (firstBuffer && firstBuffer.timestamp.getTime() < cutoffTime) {
+        userBuffer.shift();
+      } else {
+        break;
+      }
     }
   }
 
-  private updatePacketStatistics(userId: string, sequenceNumber: number, timestamp: Date): void {
+  private updatePacketStatistics(userId: string, _sequenceNumber: number, _timestamp: Date): void {
     if (!this.statistics.has(userId)) {
       this.statistics.set(userId, {
         totalPackets: 0,
@@ -600,7 +600,7 @@ export class AudioProcessor {
     stats.totalPackets++;
   }
 
-  private detectPacketLoss(userId: string, sequenceNumber: number): boolean {
+  private detectPacketLoss(_userId: string, _sequenceNumber: number): boolean {
     // Simple packet loss detection based on sequence numbers
     // In a real implementation, this would be more sophisticated
     return false;

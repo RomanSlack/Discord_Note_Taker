@@ -544,7 +544,7 @@ async function handleRecordStats(interaction: ChatInputCommandInteraction): Prom
   try {
     await interaction.deferReply({ ephemeral: true });
 
-    const recordingStats = recordingManager.getRecordingStats();
+    const recordingStats = await recordingManager.getRecordingStats();
     const storageStats = await audioStorage.getStorageStats();
 
     const embed = {
@@ -579,7 +579,7 @@ async function handleRecordStats(interaction: ChatInputCommandInteraction): Prom
     if (recordingStats.topUsers.length > 0) {
       const topUsersText = recordingStats.topUsers
         .slice(0, 5)
-        .map((user, index) => 
+        .map((user: { userId: string; username: string; totalTime: number }, index: number) => 
           `${index + 1}. ${user.username}: ${formatDuration(user.totalTime)}`
         )
         .join('\n');

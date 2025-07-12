@@ -1,6 +1,5 @@
 import { EventEmitter } from 'events';
 import { createLogger } from '@utils/logger';
-import { settingsManager } from '@config/settings';
 
 const logger = createLogger('AudioAnalyzer');
 
@@ -56,7 +55,6 @@ export class AudioAnalyzer extends EventEmitter {
   private readonly silenceThreshold: number = -50; // dB
   private readonly speechThreshold: number = -35; // dB
   private readonly minSpeechDuration: number = 250; // ms
-  private readonly maxSilenceDuration: number = 2000; // ms
   
   // Activity tracking
   private speakerActivities: Map<string, SpeakerActivity> = new Map();

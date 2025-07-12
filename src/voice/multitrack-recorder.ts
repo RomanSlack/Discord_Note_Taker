@@ -8,8 +8,6 @@ import { User } from 'discord.js';
 import { createLogger, withLogging } from '@utils/logger';
 import { config } from '@config/environment';
 import { settingsManager } from '@config/settings';
-import { Transform, PassThrough } from 'stream';
-import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
@@ -99,15 +97,12 @@ export class MultiTrackRecorder extends EventEmitter {
   private receiver: DiscordVoiceReceiver;
   private currentSession: RecordingSession | null = null;
   private readonly storageDir: string;
-  private readonly maxSessionDuration: number = 8 * 60 * 60 * 1000; // 8 hours
   private readonly packetDuration: number = 20; // 20ms Discord packets
   private readonly sampleRate: number = 48000; // Discord's sample rate
   private readonly channels: number = 2;
-  private readonly samplesPerPacket: number;
   
   // Audio processing constants
   private readonly silenceThreshold: number = -50; // dB
-  private readonly silenceTimeoutMs: number = 2000; // 2 seconds
   private readonly minSpeechDurationMs: number = 250; // 250ms minimum speech
   
   // Memory management
@@ -120,7 +115,6 @@ export class MultiTrackRecorder extends EventEmitter {
     this.connection = connection;
     this.receiver = connection.receiver;
     this.storageDir = storageDir;
-    this.samplesPerPacket = (this.sampleRate * this.packetDuration) / 1000;
     
     this.setupCleanupTimer();
   }
@@ -141,8 +135,8 @@ export class MultiTrackRecorder extends EventEmitter {
       // Initialize recording session
       this.currentSession = {
         sessionId,
-        guildId: this.connection.guildId || '',
-        channelId: this.connection.channelId || '',
+        guildId: (this.connection.joinConfig as any).guildId || '',
+        channelId: (this.connection.joinConfig as any).channelId || '',
         channelName,
         startTime: new Date(),
         state: RecordingState.STARTING,
@@ -201,7 +195,7 @@ export class MultiTrackRecorder extends EventEmitter {
       this.currentSession.state = RecordingState.STOPPING;
 
       // Stop all active user streams
-      for (const [userId, userTrack] of this.currentSession.participants) {
+      for (const [userId] of this.currentSession.participants) {
         await this.stopUserTrack(userId);
       }
 
@@ -247,7 +241,7 @@ export class MultiTrackRecorder extends EventEmitter {
     this.currentSession.state = RecordingState.PAUSED;
     
     // Pause all active streams (don't destroy them)
-    for (const [userId, userTrack] of this.currentSession.participants) {
+    for (const [, userTrack] of this.currentSession.participants) {
       if (userTrack.stream) {
         userTrack.stream.pause();
       }
@@ -268,7 +262,7 @@ export class MultiTrackRecorder extends EventEmitter {
     this.currentSession.state = RecordingState.RECORDING;
     
     // Resume all active streams
-    for (const [userId, userTrack] of this.currentSession.participants) {
+    for (const [, userTrack] of this.currentSession.participants) {
       if (userTrack.stream) {
         userTrack.stream.resume();
       }
@@ -711,10 +705,9 @@ export class MultiTrackRecorder extends EventEmitter {
 
   private async getUserInfo(userId: string): Promise<User | null> {
     try {
-      const client = this.connection.joinConfig.group;
       // Access the Discord client through the voice connection
       const voiceConnection = this.connection;
-      const adapter = voiceConnection.joinConfig.adapterCreator;
+      const adapter = (voiceConnection.joinConfig as any).adapter;
       
       // Get client from adapter (this is a bit of a hack but necessary)
       const clientFromAdapter = (adapter as any).client;
