@@ -33,6 +33,7 @@
       "@bot/*": ["bot/*"],
       "@voice/*": ["voice/*"],
       "@transcription/*": ["transcription/*"],
+      "@summarization/*": ["summarization/*"],
       "@config/*": ["config/*"],
       "@utils/*": ["utils/*"]
     }
@@ -48,6 +49,6 @@
   ],
   "ts-node": {
     "esm": false,
-    "require": ["dotenv/config"]
+    "require": ["dotenv/config", "tsconfig-paths/register"]
   }
 }

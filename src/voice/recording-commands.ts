@@ -19,7 +19,7 @@ export interface Command {
 }
 
 // Record Start Command
-export const recordStartCommand: Command = {
+export const recordStartCommand = {
   data: new SlashCommandBuilder()
     .setName('record')
     .setDescription('Recording management commands')
@@ -151,6 +151,15 @@ async function handleRecordStart(interaction: ChatInputCommandInteraction): Prom
       return;
     }
 
+    // Type guard to ensure we have a voice or stage channel
+    if (!('bitrate' in voiceChannel)) {
+      await interaction.reply({
+        content: 'The specified channel is not a voice channel.',
+        ephemeral: true
+      });
+      return;
+    }
+
     // Get options
     const format = interaction.options.getString('format') || 'pcm';
     const enableProcessing = interaction.options.getBoolean('processing') ?? true;
@@ -158,6 +167,14 @@ async function handleRecordStart(interaction: ChatInputCommandInteraction): Prom
     await interaction.deferReply();
 
     try {
+      if (!interaction.guildId) {
+        await interaction.reply({
+          content: 'This command can only be used in a server.',
+          ephemeral: true
+        });
+        return;
+      }
+
       // Get or create voice connection
       let connection = voiceConnectionManager.getConnection(interaction.guildId);
       if (!connection) {
@@ -185,7 +202,7 @@ async function handleRecordStart(interaction: ChatInputCommandInteraction): Prom
         fields: [
           {
             name: '📍 Channel',
-            value: voiceChannel.name,
+            value: voiceChannel.name || 'Unknown Channel',
             inline: true
           },
           {
@@ -225,7 +242,7 @@ async function handleRecordStart(interaction: ChatInputCommandInteraction): Prom
     } catch (error) {
       logger.error('Failed to start recording:', error);
       await interaction.editReply({
-        content: `❌ Failed to start recording: ${error.message}`
+        content: `❌ Failed to start recording: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     }
 
@@ -318,7 +335,7 @@ async function handleRecordStop(interaction: ChatInputCommandInteraction): Promi
     } catch (error) {
       logger.error('Failed to stop recording:', error);
       await interaction.editReply({
-        content: `❌ Failed to stop recording: ${error.message}`
+        content: `❌ Failed to stop recording: ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
 
@@ -366,7 +383,7 @@ async function handleRecordPause(interaction: ChatInputCommandInteraction): Prom
     } catch (error) {
       logger.error('Failed to pause recording:', error);
       await interaction.reply({
-        content: `❌ Failed to pause recording: ${error.message}`,
+        content: `❌ Failed to pause recording: ${error instanceof Error ? error.message : "Unknown error"}`,
         ephemeral: true
       });
     }
@@ -415,7 +432,7 @@ async function handleRecordResume(interaction: ChatInputCommandInteraction): Pro
     } catch (error) {
       logger.error('Failed to resume recording:', error);
       await interaction.reply({
-        content: `❌ Failed to resume recording: ${error.message}`,
+        content: `❌ Failed to resume recording: ${error instanceof Error ? error.message : "Unknown error"}`,
         ephemeral: true
       });
     }

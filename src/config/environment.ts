@@ -1,10 +1,7 @@
 import * as dotenv from 'dotenv';
-import { Logger } from '@utils/logger';
 
 // Load environment variables
 dotenv.config();
-
-const logger = new Logger('Environment');
 
 export interface BotConfiguration {
   // Discord Configuration
@@ -49,7 +46,7 @@ class EnvironmentValidator {
     
     const parsed = parseInt(value, 10);
     if (isNaN(parsed)) {
-      logger.warn(`Invalid number for ${key}, using default: ${defaultValue}`);
+      console.warn(`Invalid number for ${key}, using default: ${defaultValue}`);
       return defaultValue;
     }
     return parsed;
@@ -68,17 +65,12 @@ class EnvironmentValidator {
         // Discord Configuration
         discordToken: this.validateRequired('DISCORD_TOKEN', process.env.DISCORD_TOKEN),
         clientId: this.validateRequired('DISCORD_CLIENT_ID', process.env.DISCORD_CLIENT_ID),
-        guildId: process.env.DISCORD_GUILD_ID,
         
         // Voice Configuration
         segmentWindowSec: this.validateNumber('SEGMENT_WINDOW_SEC', 300),
         maxConcurrentConnections: this.validateNumber('MAX_CONCURRENT_CONNECTIONS', 10),
         voiceTimeout: this.validateNumber('VOICE_TIMEOUT', 30000),
         reconnectAttempts: this.validateNumber('RECONNECT_ATTEMPTS', 3),
-        
-        // API Configuration
-        assemblyAiApiKey: process.env.ASSEMBLY_AI_API_KEY,
-        openAiApiKey: process.env.OPENAI_API_KEY,
         
         // Logging Configuration
         logLevel: this.validateOptional('LOG_LEVEL', 'info'),
@@ -89,28 +81,41 @@ class EnvironmentValidator {
         debugMode: this.validateBoolean('DEBUG_MODE', false)
       };
 
+      // Add optional properties only if they exist
+      if (process.env.DISCORD_GUILD_ID) {
+        config.guildId = process.env.DISCORD_GUILD_ID;
+      }
+      
+      if (process.env.ASSEMBLY_AI_API_KEY) {
+        config.assemblyAiApiKey = process.env.ASSEMBLY_AI_API_KEY;
+      }
+      
+      if (process.env.OPENAI_API_KEY) {
+        config.openAiApiKey = process.env.OPENAI_API_KEY;
+      }
+
       // Validate log level
       const validLogLevels = ['error', 'warn', 'info', 'debug'];
       if (!validLogLevels.includes(config.logLevel)) {
-        logger.warn(`Invalid log level: ${config.logLevel}, defaulting to 'info'`);
+        console.warn(`Invalid log level: ${config.logLevel}, defaulting to 'info'`);
         config.logLevel = 'info';
       }
 
       // Validate numeric ranges
       if (config.segmentWindowSec < 10 || config.segmentWindowSec > 3600) {
-        logger.warn(`Invalid segment window: ${config.segmentWindowSec}s, must be between 10-3600s`);
+        console.warn(`Invalid segment window: ${config.segmentWindowSec}s, must be between 10-3600s`);
         config.segmentWindowSec = 300;
       }
 
       if (config.maxConcurrentConnections < 1 || config.maxConcurrentConnections > 100) {
-        logger.warn(`Invalid max connections: ${config.maxConcurrentConnections}, must be between 1-100`);
+        console.warn(`Invalid max connections: ${config.maxConcurrentConnections}, must be between 1-100`);
         config.maxConcurrentConnections = 10;
       }
 
-      logger.info('Environment configuration validated successfully');
+      console.info('Environment configuration validated successfully');
       
       if (config.debugMode) {
-        logger.debug('Configuration loaded:', {
+        console.debug('Configuration loaded:', {
           ...config,
           discordToken: '***REDACTED***',
           assemblyAiApiKey: config.assemblyAiApiKey ? '***REDACTED***' : 'not set',
@@ -120,7 +125,7 @@ class EnvironmentValidator {
 
       return config;
     } catch (error) {
-      logger.error('Failed to validate environment configuration:', error);
+      console.error('Failed to validate environment configuration:', error);
       throw error;
     }
   }

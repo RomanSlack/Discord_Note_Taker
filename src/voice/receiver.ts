@@ -4,15 +4,12 @@ import {
   AudioReceiveStream,
   EndBehaviorType
 } from '@discordjs/voice';
-import { User } from 'discord.js';
+import { User, Client } from 'discord.js';
 import { createLogger, withLogging } from '@utils/logger';
 import { config } from '@config/environment';
 import { settingsManager } from '@config/settings';
-import { Transform, pipeline } from 'stream';
-import { promisify } from 'util';
 import * as fs from 'fs';
-
-const pipelineAsync = promisify(pipeline);
+import { EventEmitter } from 'events';
 const logger = createLogger('VoiceReceiver');
 
 export interface AudioStream {
@@ -36,18 +33,19 @@ export interface AudioSegment {
   channels: number;
 }
 
-export class VoiceReceiver {
-  private connection: VoiceConnection;
+export class VoiceReceiver extends EventEmitter {
   private receiver: DiscordVoiceReceiver;
+  private client: Client;
   private activeStreams: Map<string, AudioStream> = new Map();
   private isInitialized: boolean = false;
   private readonly segmentWindow: number = config.segmentWindowSec * 1000; // Convert to ms
   private segmentTimer: NodeJS.Timeout | null = null;
   private audioSegments: AudioSegment[] = [];
 
-  constructor(connection: VoiceConnection) {
-    this.connection = connection;
+  constructor(connection: VoiceConnection, client: Client) {
+    super();
     this.receiver = connection.receiver;
+    this.client = client;
   }
 
   public async initialize(): Promise<void> {
@@ -338,7 +336,7 @@ export class VoiceReceiver {
 
       // Process segments for transcription
       this.emit('segment-window-complete', { 
-        segments: recentSegments,
+        segments: windowSegments,
         windowStart,
         windowEnd: now 
       });
@@ -362,7 +360,7 @@ export class VoiceReceiver {
   private async getUserInfo(userId: string): Promise<User | null> {
     try {
       // Try to get user from cache first
-      const client = this.connection.receiver.voiceConnection.manager.client;
+      const client = this.client;
       let user = client.users.cache.get(userId);
 
       if (!user) {

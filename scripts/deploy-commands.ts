@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { REST, Routes } from 'discord.js';
 import { config } from '../src/config/environment';
-import { commands, getAllCommands } from '../src/bot/commands';
+import { getAllCommands } from '../src/bot/commands';
 import { createLogger } from '../src/utils/logger';
 import SummarizationSystem from '../src/summarization/index';
 import TranscriptManager from '../src/transcription/transcript-manager';

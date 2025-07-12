@@ -1,8 +1,6 @@
 import { EventEmitter } from 'events';
 import { VoiceConnection } from '@discordjs/voice';
 import { createLogger } from '@utils/logger';
-import { config } from '@config/environment';
-import { settingsManager } from '@config/settings';
 import MultiTrackRecorder, { RecordingSession, RecordingState, UserTrack, AudioSegment } from './multitrack-recorder';
 import AudioProcessor, { AudioFormat, ProcessingOptions } from './audio-processor';
 import * as fs from 'fs';
@@ -286,7 +284,7 @@ export class RecordingManager extends EventEmitter {
   /**
    * Get recording statistics
    */
-  public getRecordingStats(): RecordingStats {
+  public async getRecordingStats(): Promise<RecordingStats> {
     const activeSessions = this.getActiveSessions();
     const allSessions = [...this.sessionHistory, ...activeSessions];
 
@@ -327,39 +325,6 @@ export class RecordingManager extends EventEmitter {
     };
   }
 
-  private async calculateStorageUsage(): Promise<number> {
-    try {
-      const fs = await import('fs').then(m => m.promises);
-      const path = await import('path');
-      
-      let totalSize = 0;
-      
-      // Calculate storage usage for all recorders
-      for (const [guildId, recorder] of this.recorders) {
-        const storageLocation = recorder.getStorageLocation();
-        if (storageLocation) {
-          try {
-            const files = await fs.readdir(storageLocation, { withFileTypes: true });
-            for (const file of files) {
-              if (file.isFile()) {
-                const filePath = path.join(storageLocation, file.name);
-                const stats = await fs.stat(filePath);
-                totalSize += stats.size;
-              }
-            }
-          } catch (error) {
-            // Storage location may not exist yet
-            logger.debug(`Storage location not accessible for guild ${guildId}:`, error);
-          }
-        }
-      }
-      
-      return totalSize;
-    } catch (error) {
-      logger.error('Failed to calculate storage usage:', error);
-      return 0;
-    }
-  }
 
   private setupRecorderEventHandlers(guildId: string, recorder: MultiTrackRecorder): void {
     recorder.on('session-started', (session: RecordingSession) => {

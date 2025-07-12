@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { createLogger } from '@utils/logger';
 import { voiceConnectionManager } from '@voice/connection';
 import { recordCommand } from '@voice/recording-commands';
@@ -8,7 +8,7 @@ import SummarizationSystem from '@summarization/index';
 const logger = createLogger('Commands');
 
 export interface Command {
-  data: SlashCommandBuilder;
+  data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
 }
 

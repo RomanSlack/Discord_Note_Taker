@@ -2,14 +2,8 @@ import {
   VoiceConnection,
   VoiceConnectionStatus,
   createAudioPlayer,
-  createAudioResource,
   joinVoiceChannel,
-  getVoiceConnection,
-  AudioPlayer,
-  AudioPlayerStatus,
-  VoiceConnectionReadyState,
-  VoiceConnectionDestroyedState,
-  VoiceConnectionDisconnectedState
+  AudioPlayer
 } from '@discordjs/voice';
 import { 
   VoiceChannel, 
@@ -100,7 +94,7 @@ export class VoiceConnectionManager {
       const player = createAudioPlayer();
 
       // Create voice receiver for audio capture
-      const receiver = new VoiceReceiver(connection);
+      const receiver = new VoiceReceiver(connection, this.client!);
 
       // Set up connection event handlers
       this.setupConnectionEventHandlers(connection, guildId);
@@ -211,12 +205,8 @@ export class VoiceConnectionManager {
     }, 'ConnectionReady'));
 
     // Disconnected state
-    connection.on(VoiceConnectionStatus.Disconnected, withLogging(async (oldState, newState) => {
-      logger.warn('Voice connection disconnected', {
-        guildId,
-        oldNetworking: oldState.networking.state.type,
-        newNetworking: newState.networking.state.type
-      });
+    connection.on(VoiceConnectionStatus.Disconnected, withLogging(async () => {
+      logger.warn('Voice connection disconnected', { guildId });
 
       // Attempt to reconnect
       await this.handleDisconnection(guildId);
@@ -304,7 +294,7 @@ export class VoiceConnectionManager {
     
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        reject(new Error(`Connection timeout after ${timeout}ms`));
+        reject(new Error(`Connection timeout after ${timeout}ms for guild ${guildId}`));
       }, timeout);
 
       const onReady = () => {
