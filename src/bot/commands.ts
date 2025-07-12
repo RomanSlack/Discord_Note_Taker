@@ -2,7 +2,7 @@ import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder, ChatInputComma
 import { createLogger } from '@utils/logger';
 import { voiceConnectionManager } from '@voice/connection';
 import { recordCommand } from '@voice/recording-commands';
-// import { transcribeCommand } from '@transcription/transcription-commands';
+import { transcribeCommand } from '@transcription/transcription-commands';
 // import SummarizationSystem from '@summarization/index';
 
 const logger = createLogger('Commands');
@@ -220,8 +220,8 @@ export function getAllCommands(summarizationSystem?: any): Command[] {
     leaveCommand,
     statusCommand,
     healthCommand,
-    recordCommand
-    // transcribeCommand
+    recordCommand,
+    transcribeCommand
   ];
 
   // Add summarization commands if system is available and initialized
@@ -239,8 +239,8 @@ export const commands: Command[] = [
   leaveCommand,
   statusCommand,
   healthCommand,
-  recordCommand
-  // transcribeCommand
+  recordCommand,
+  transcribeCommand
 ];
 
 export default commands;

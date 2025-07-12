@@ -13,27 +13,27 @@ import { createLogger, withLogging } from '@utils/logger';
 import { config } from '@config/environment';
 import { settingsManager } from '@config/settings';
 import { commands, getAllCommands } from './commands';
-// import SummarizationSystem from '@summarization/index';
-// import TranscriptManager from '@transcription/transcript-manager';
+import SummarizationSystem from '@summarization/index';
+import TranscriptManager from '@transcription/transcript-manager';
 
 const logger = createLogger('BotMain');
 
 class DiscordVoiceBot {
   private isInitialized: boolean = false;
-  // private transcriptManager: TranscriptManager;
-  // private summarizationSystem: SummarizationSystem | null = null;
+  private transcriptManager: TranscriptManager;
+  private summarizationSystem: SummarizationSystem | null = null;
   private availableCommands: any[] = [];
 
   constructor() {
     // Initialize transcript manager
-    // this.transcriptManager = new TranscriptManager('./transcripts');
+    this.transcriptManager = new TranscriptManager('./transcripts');
     
     // Initialize summarization system if OpenAI key is available
-    // if (config.openAiApiKey) {
-    //   this.summarizationSystem = new SummarizationSystem(this.transcriptManager);
-    // } else {
-    //   logger.warn('OpenAI API key not configured - summarization features will be disabled');
-    // }
+    if (config.openAiApiKey) {
+      this.summarizationSystem = new SummarizationSystem(this.transcriptManager);
+    } else {
+      logger.warn('OpenAI API key not configured - summarization features will be disabled');
+    }
 
     this.setupEventHandlers();
     this.setupGracefulShutdown();
@@ -81,18 +81,18 @@ class DiscordVoiceBot {
     await voiceConnectionManager.initialize(client);
     
     // Initialize summarization system if available
-    // if (this.summarizationSystem) {
-    //   try {
-    //     await this.summarizationSystem.initialize();
-    //     logger.info('Summarization system initialized successfully');
-    //   } catch (error) {
-    //     logger.error('Failed to initialize summarization system:', error);
-    //     this.summarizationSystem = null;
-    //   }
-    // }
+    if (this.summarizationSystem) {
+      try {
+        await this.summarizationSystem.initialize();
+        logger.info('Summarization system initialized successfully');
+      } catch (error) {
+        logger.error('Failed to initialize summarization system:', error);
+        this.summarizationSystem = null;
+      }
+    }
 
     // Set up available commands (including summarization commands if available)
-    this.availableCommands = getAllCommands(undefined);
+    this.availableCommands = getAllCommands(this.summarizationSystem);
     logger.info('Commands initialized', { commandCount: this.availableCommands.length });
     
     this.isInitialized = true;
@@ -407,14 +407,14 @@ class DiscordVoiceBot {
       
       try {
         // Cleanup summarization system
-        // if (this.summarizationSystem) {
-        //   await this.summarizationSystem.cleanup();
-        //   logger.info('Summarization system cleaned up');
-        // }
+        if (this.summarizationSystem) {
+          await this.summarizationSystem.cleanup();
+          logger.info('Summarization system cleaned up');
+        }
 
         // Cleanup transcript manager
-        // await this.transcriptManager.cleanup();
-        // logger.info('Transcript manager cleaned up');
+        await this.transcriptManager.cleanup();
+        logger.info('Transcript manager cleaned up');
         
         // Disconnect from all voice channels
         await voiceConnectionManager.cleanup();

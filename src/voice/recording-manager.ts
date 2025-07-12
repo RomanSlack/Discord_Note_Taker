@@ -167,7 +167,25 @@ export class RecordingManager extends EventEmitter {
       // We'll create a simple Map to track sessions directly
       const mockRecorder = { 
         getCurrentSession: () => session, 
-        getRecordingState: () => 'recording' as any,
+        getRecordingState: () => session.state,
+        stopRecording: async () => {
+          session.state = 'stopped' as any;
+          session.endTime = new Date();
+          session.totalDuration = session.endTime.getTime() - session.startTime.getTime();
+          return session;
+        },
+        pauseRecording: async () => {
+          session.state = 'paused' as any;
+        },
+        resumeRecording: async () => {
+          session.state = 'recording' as any;
+        },
+        cleanup: async () => {
+          // Cleanup handled by voice receiver
+        },
+        getActiveParticipants: () => {
+          return Array.from(session.participants.values());
+        },
         session: session
       } as any;
       this.recorders.set(guildId, mockRecorder);
@@ -233,6 +251,9 @@ export class RecordingManager extends EventEmitter {
           duration: session.totalDuration,
           participants: session.participants.size
         });
+
+        // Trigger transcription and summarization pipeline
+        await this.processRecordingWithAI(session);
       }
 
       // Cleanup
@@ -716,6 +737,297 @@ export class RecordingManager extends EventEmitter {
     } catch (error) {
       logger.error('Error during recording manager cleanup:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Process recording session with AI (transcription and summarization)
+   */
+  private async processRecordingWithAI(session: any): Promise<void> {
+    try {
+      logger.info('Starting AI processing for recording session', {
+        sessionId: session.sessionId,
+        guildId: session.guildId
+      });
+
+      // Get the session directory where audio files are stored
+      const sessionDir = path.join(this.configuration.storageLocation, session.sessionId);
+      
+      // Check if session directory exists
+      if (!await fs.promises.access(sessionDir).then(() => true).catch(() => false)) {
+        logger.warn('Session directory not found, skipping AI processing', {
+          sessionId: session.sessionId,
+          sessionDir
+        });
+        return;
+      }
+
+      // Get list of user directories
+      const entries = await fs.promises.readdir(sessionDir, { withFileTypes: true });
+      const userDirs = entries.filter(entry => entry.isDirectory());
+
+      if (userDirs.length === 0) {
+        logger.warn('No user audio directories found, skipping AI processing', {
+          sessionId: session.sessionId
+        });
+        return;
+      }
+
+      logger.info('Processing audio files for transcription', {
+        sessionId: session.sessionId,
+        userCount: userDirs.length
+      });
+
+      // Process each user's audio files
+      const transcriptionResults = [];
+      for (const userDir of userDirs) {
+        try {
+          const userDirPath = path.join(sessionDir, userDir.name);
+          const audioFiles = await fs.promises.readdir(userDirPath);
+          const pcmFiles = audioFiles.filter(file => file.endsWith('.pcm'));
+
+          if (pcmFiles.length === 0) {
+            logger.debug('No audio files found for user', {
+              sessionId: session.sessionId,
+              userDir: userDir.name
+            });
+            continue;
+          }
+
+          // Parse username from directory name (format: userId-username)
+          const [userId, ...usernameParts] = userDir.name.split('-');
+          const username = usernameParts.join('-');
+
+          logger.info('Processing transcription for user', {
+            sessionId: session.sessionId,
+            userId,
+            username,
+            audioFileCount: pcmFiles.length
+          });
+
+          // Combine all audio files for this user
+          const combinedAudioPath = path.join(userDirPath, 'combined-audio.pcm');
+          await this.combineAudioFiles(userDirPath, pcmFiles, combinedAudioPath);
+
+          // Convert PCM to WAV for better compatibility
+          const wavPath = path.join(userDirPath, 'combined-audio.wav');
+          await this.convertPcmToWav(combinedAudioPath, wavPath);
+
+          // Trigger transcription
+          const transcriptResult = await this.transcribeAudioFile(wavPath, userId, username);
+          if (transcriptResult) {
+            transcriptionResults.push(transcriptResult);
+          }
+
+        } catch (error) {
+          logger.error('Error processing user audio for transcription', {
+            sessionId: session.sessionId,
+            userDir: userDir.name,
+            error
+          });
+        }
+      }
+
+      // Save transcription results
+      if (transcriptionResults.length > 0) {
+        await this.saveTranscriptionResults(session, transcriptionResults);
+        
+        // Trigger summarization if enabled
+        await this.generateSessionSummary(session, transcriptionResults);
+      }
+
+      logger.info('AI processing completed for recording session', {
+        sessionId: session.sessionId,
+        transcriptionsGenerated: transcriptionResults.length
+      });
+
+    } catch (error) {
+      logger.error('Error in AI processing pipeline:', {
+        sessionId: session.sessionId,
+        error
+      });
+    }
+  }
+
+  private async combineAudioFiles(userDirPath: string, audioFiles: string[], outputPath: string): Promise<void> {
+    try {
+      // Sort audio files by timestamp to maintain chronological order
+      const sortedFiles = audioFiles.sort();
+      
+      // Read and combine all audio files
+      const audioBuffers = [];
+      for (const file of sortedFiles) {
+        const filePath = path.join(userDirPath, file);
+        const audioData = await fs.promises.readFile(filePath);
+        audioBuffers.push(audioData);
+      }
+
+      // Combine all buffers
+      const combinedBuffer = Buffer.concat(audioBuffers);
+      await fs.promises.writeFile(outputPath, combinedBuffer);
+
+      logger.debug('Combined audio files', {
+        fileCount: audioFiles.length,
+        totalSize: combinedBuffer.length,
+        outputPath
+      });
+
+    } catch (error) {
+      logger.error('Error combining audio files:', error);
+      throw error;
+    }
+  }
+
+  private async convertPcmToWav(pcmPath: string, wavPath: string): Promise<void> {
+    try {
+      // Simple PCM to WAV conversion
+      // WAV header for 16kHz, 16-bit, mono PCM
+      const pcmData = await fs.promises.readFile(pcmPath);
+      const wavHeader = this.createWavHeader(pcmData.length, 16000, 1, 16);
+      const wavData = Buffer.concat([wavHeader, pcmData]);
+      
+      await fs.promises.writeFile(wavPath, wavData);
+      
+      logger.debug('Converted PCM to WAV', {
+        pcmSize: pcmData.length,
+        wavSize: wavData.length,
+        wavPath
+      });
+
+    } catch (error) {
+      logger.error('Error converting PCM to WAV:', error);
+      throw error;
+    }
+  }
+
+  private createWavHeader(dataLength: number, sampleRate: number, channels: number, bitsPerSample: number): Buffer {
+    const header = Buffer.alloc(44);
+    const bytesPerSample = bitsPerSample / 8;
+    const blockAlign = channels * bytesPerSample;
+    const byteRate = sampleRate * blockAlign;
+
+    header.write('RIFF', 0);
+    header.writeUInt32LE(36 + dataLength, 4);
+    header.write('WAVE', 8);
+    header.write('fmt ', 12);
+    header.writeUInt32LE(16, 16);
+    header.writeUInt16LE(1, 20);
+    header.writeUInt16LE(channels, 22);
+    header.writeUInt32LE(sampleRate, 24);
+    header.writeUInt32LE(byteRate, 28);
+    header.writeUInt16LE(blockAlign, 32);
+    header.writeUInt16LE(bitsPerSample, 34);
+    header.write('data', 36);
+    header.writeUInt32LE(dataLength, 40);
+
+    return header;
+  }
+
+  private async transcribeAudioFile(audioPath: string, userId: string, username: string): Promise<any> {
+    try {
+      // This would integrate with your transcription service (AssemblyAI, OpenAI Whisper, etc.)
+      // For now, return a placeholder that would be replaced with actual transcription
+      
+      logger.info('Transcribing audio file', {
+        audioPath,
+        userId,
+        username
+      });
+
+      // Placeholder for actual transcription service integration
+      const transcriptResult = {
+        userId,
+        username,
+        audioPath,
+        transcript: 'Transcription would be generated here using AssemblyAI or OpenAI Whisper API',
+        confidence: 0.95,
+        duration: 0,
+        timestamp: new Date().toISOString()
+      };
+
+      return transcriptResult;
+
+    } catch (error) {
+      logger.error('Error transcribing audio file:', {
+        audioPath,
+        userId,
+        username,
+        error
+      });
+      return null;
+    }
+  }
+
+  private async saveTranscriptionResults(session: any, transcriptions: any[]): Promise<void> {
+    try {
+      const sessionDir = path.join(this.configuration.storageLocation, session.sessionId);
+      const transcriptPath = path.join(sessionDir, 'transcriptions.json');
+      
+      const transcriptData = {
+        sessionId: session.sessionId,
+        guildId: session.guildId,
+        channelName: session.channelName,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        transcriptions,
+        generatedAt: new Date().toISOString()
+      };
+
+      await fs.promises.writeFile(transcriptPath, JSON.stringify(transcriptData, null, 2));
+      
+      logger.info('Transcription results saved', {
+        sessionId: session.sessionId,
+        transcriptPath,
+        transcriptionCount: transcriptions.length
+      });
+
+    } catch (error) {
+      logger.error('Error saving transcription results:', error);
+    }
+  }
+
+  private async generateSessionSummary(session: any, transcriptions: any[]): Promise<void> {
+    try {
+      logger.info('Generating session summary', {
+        sessionId: session.sessionId,
+        transcriptionCount: transcriptions.length
+      });
+
+      const sessionDir = path.join(this.configuration.storageLocation, session.sessionId);
+      const summaryPath = path.join(sessionDir, 'summary.json');
+
+      // Combine all transcriptions into conversation flow
+      const conversationText = transcriptions
+        .map(t => `${t.username}: ${t.transcript}`)
+        .join('\n\n');
+
+      // Placeholder for actual AI summarization
+      const summary = {
+        sessionId: session.sessionId,
+        summary: 'AI-generated summary would be created here using OpenAI GPT or similar',
+        keyPoints: [
+          'Key discussion topics would be extracted',
+          'Important decisions would be highlighted',
+          'Action items would be identified'
+        ],
+        participants: transcriptions.map(t => ({
+          userId: t.userId,
+          username: t.username,
+          speakingTime: 'Calculated speaking duration'
+        })),
+        conversationText,
+        generatedAt: new Date().toISOString()
+      };
+
+      await fs.promises.writeFile(summaryPath, JSON.stringify(summary, null, 2));
+      
+      logger.info('Session summary generated', {
+        sessionId: session.sessionId,
+        summaryPath
+      });
+
+    } catch (error) {
+      logger.error('Error generating session summary:', error);
     }
   }
 }
