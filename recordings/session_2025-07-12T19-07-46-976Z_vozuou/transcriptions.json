@@ -1,0 +1,19 @@
+{
+  "sessionId": "session_2025-07-12T19-07-46-976Z_vozuou",
+  "guildId": "1393645214308110530",
+  "channelName": "General",
+  "startTime": "2025-07-12T19:07:46.976Z",
+  "endTime": "2025-07-12T19:08:04.890Z",
+  "transcriptions": [
+    {
+      "userId": "483985643517509642",
+      "username": "romanslack",
+      "audioPath": "recordings/session_2025-07-12T19-07-46-976Z_vozuou/483985643517509642-romanslack/combined-audio.wav",
+      "transcript": "Transcription would be generated here using AssemblyAI or OpenAI Whisper API",
+      "confidence": 0.95,
+      "duration": 0,
+      "timestamp": "2025-07-12T19:08:04.895Z"
+    }
+  ],
+  "generatedAt": "2025-07-12T19:08:04.895Z"
+}

@@ -92,7 +92,7 @@ class DiscordVoiceBot {
     }
 
     // Set up available commands (including summarization commands if available)
-    this.availableCommands = getAllCommands(this.summarizationSystem);
+    this.availableCommands = getAllCommands(client, this.summarizationSystem);
     logger.info('Commands initialized', { commandCount: this.availableCommands.length });
     
     this.isInitialized = true;

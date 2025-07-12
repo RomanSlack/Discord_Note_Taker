@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { createLogger } from '@utils/logger';
 import { voiceConnectionManager } from '@voice/connection';
-import { recordCommand } from '@voice/recording-commands';
+import { recordCommand, initializeRecorder } from '@voice/recording-commands';
 import { transcribeCommand } from '@transcription/transcription-commands';
 // import SummarizationSystem from '@summarization/index';
 
@@ -213,8 +213,13 @@ function formatUptime(uptime: number): string {
   return `${seconds}s`;
 }
 
-// Function to get all commands including dynamic summarization commands
-export function getAllCommands(summarizationSystem?: any): Command[] {
+// Function to initialize the recorder and get all commands
+export function getAllCommands(client?: any, summarizationSystem?: any): Command[] {
+  // Initialize the simple recorder if client is provided
+  if (client) {
+    initializeRecorder(client);
+  }
+
   const baseCommands = [
     joinCommand,
     leaveCommand,
