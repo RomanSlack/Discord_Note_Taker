@@ -42,12 +42,46 @@ def summarize(transcript: str) -> str:
     return rsp.choices[0].message.content
 
 def pdf_from_markdown(md: str) -> Path:
-    """Render summary Markdown to a simple PDF."""
+    """Render summary Markdown to a simple PDF with safe line handling."""
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Helvetica", size=11)
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_font("Arial", size=10)
+    pdf.set_margins(20, 20, 20)
+
     for line in md.splitlines():
-        pdf.multi_cell(0, 7, line)
+        line = line.strip()
+        if not line:
+            pdf.ln(3)  # add vertical space for blank lines
+            continue
+        
+        # Handle very long lines by breaking them into chunks
+        max_chars = 80  # Conservative character limit per line
+        while len(line) > max_chars:
+            # Find a good break point (space, punctuation)
+            break_point = max_chars
+            for i in range(max_chars, max(0, max_chars-20), -1):
+                if line[i] in ' .,;!?-':
+                    break_point = i + 1
+                    break
+            
+            try:
+                pdf.cell(0, 6, line[:break_point], ln=True)
+            except:
+                # Fallback: use even smaller chunks
+                pdf.cell(0, 6, line[:50], ln=True)
+                break_point = 50
+            
+            line = line[break_point:].strip()
+        
+        # Handle remaining text
+        if line:
+            try:
+                pdf.cell(0, 6, line, ln=True)
+            except:
+                # Ultimate fallback: truncate very problematic lines
+                pdf.cell(0, 6, line[:50] + "...", ln=True)
+
     out = Path(tempfile.mktemp(suffix=".pdf"))
     pdf.output(out)
     return out

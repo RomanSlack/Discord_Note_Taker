@@ -18,6 +18,13 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix="/", intents=intents)
 
+@bot.event
+async def on_ready():
+    print(f"🤖 Bot is online! Logged in as {bot.user}")
+    print(f"📊 Connected to {len(bot.guilds)} server(s)")
+    await bot.sync_commands()
+    print("✅ Ready to record meetings!")
+
 # ---------- helpers ----------
 class Session:
     def __init__(self):
@@ -36,7 +43,7 @@ async def finished_callback(sink: discord.sinks.WaveSink, ctx, filename: Path):
     session.files.append(filename)
 
 async def start_chunk(ctx):
-    fn = RECORD_DIR / f"{datetime.datetime.utcnow():%Y%m%d_%H%M%S}.wav"
+    fn = RECORD_DIR / f"{datetime.datetime.now(datetime.timezone.utc):%Y%m%d_%H%M%S}.wav"
     sink = discord.sinks.WaveSink()
     session.vc.start_recording(sink, finished_callback, ctx, fn)
     await asyncio.sleep(CHUNK_SEC)
@@ -93,5 +100,9 @@ async def record(ctx: discord.ApplicationContext, action: discord.Option(str, ch
         shutil.rmtree(RECORD_DIR)
         RECORD_DIR.mkdir(exist_ok=True)
         session.files.clear()
+
+@bot.slash_command(description="Check if bot is online")
+async def status(ctx: discord.ApplicationContext):
+    await ctx.respond("✅ Bot is online and ready!")
 
 bot.run(TOKEN)
