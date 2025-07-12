@@ -1,4 +1,4 @@
-import os, asyncio, datetime, uuid, subprocess, tempfile, shutil
+import os, asyncio, datetime, uuid, subprocess, tempfile
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -11,6 +11,8 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 GUILD_ID = int(os.getenv("GUILD_ID")) if os.getenv("GUILD_ID") else None
 RECORD_DIR = Path("recordings")
 RECORD_DIR.mkdir(exist_ok=True)
+SUMMARIES_DIR = Path("summaries")
+SUMMARIES_DIR.mkdir(exist_ok=True)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -90,15 +92,17 @@ async def record(ctx: discord.ApplicationContext, action: discord.Option(str, ch
         combined = combine_audio(session.files)
         transcript = transcribe(combined)
         md_summary = summarize(transcript)
-        pdf_path = pdf_from_markdown(md_summary)
+        
+        # Save with timestamp
+        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
+        pdf_path = SUMMARIES_DIR / f"meeting_{timestamp}.pdf"
+        pdf_from_markdown(md_summary, pdf_path)
 
         await ctx.author.send(
-            content="Here’s your meeting summary:",
+            content="Here's your meeting summary:",
             file=discord.File(pdf_path)
         )
-        # cleanup
-        shutil.rmtree(RECORD_DIR)
-        RECORD_DIR.mkdir(exist_ok=True)
+        # Don't delete recordings - keep them for reference
         session.files.clear()
 
 @bot.slash_command(description="Check if bot is online")

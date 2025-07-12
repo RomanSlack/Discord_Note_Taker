@@ -78,6 +78,9 @@ coverage/
 *.wav
 *.mp3
 
+# Bot recordings
+recordings/
+
 # IDE files
 .vscode/
 .idea/
