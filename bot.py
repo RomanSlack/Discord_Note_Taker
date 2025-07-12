@@ -7,7 +7,7 @@ from utils import combine_audio, transcribe, summarize, pdf_from_markdown
 # ── config ──────────────────────────────────────────────
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-CHUNK_SEC = 300
+CHUNK_SEC = 30
 RECORD_DIR  = Path("recordings"); RECORD_DIR.mkdir(exist_ok=True)
 SUMMARY_DIR = Path("summaries");  SUMMARY_DIR.mkdir(exist_ok=True)
 

@@ -22,12 +22,33 @@ def combine_audio(wav_files: list[Path]) -> Path:
     return out
 
 def transcribe(wav_path: Path) -> str:
-    with open(wav_path, "rb") as f:
-        return client.audio.transcriptions.create(
-            model=os.getenv("MODEL_WHISPER","whisper-1"),
-            file=f,
-            response_format="text"
-        )
+    # First try the original file directly
+    try:
+        with open(wav_path, "rb") as f:
+            return client.audio.transcriptions.create(
+                model=os.getenv("MODEL_WHISPER","whisper-1"),
+                file=f,
+                response_format="text"
+            )
+    except Exception:
+        # If that fails, try converting to MP3
+        temp_path = Path(tempfile.mktemp(suffix=".mp3"))
+        try:
+            # Try more robust ffmpeg conversion
+            subprocess.run([
+                "ffmpeg", "-y", "-i", str(wav_path),
+                "-f", "mp3", "-acodec", "libmp3lame", "-ar", "16000", "-ac", "1",
+                "-b:a", "128k", str(temp_path)
+            ], check=True, capture_output=True)
+            
+            with open(temp_path, "rb") as f:
+                return client.audio.transcriptions.create(
+                    model=os.getenv("MODEL_WHISPER","whisper-1"),
+                    file=f,
+                    response_format="text"
+                )
+        finally:
+            temp_path.unlink(missing_ok=True)
 
 SYSTEM_PROMPT = """You are an expert meeting summarizer and note-taker. Your job is to carefully review and distill the full transcript of a multi-person discussion, treating all dialogue as a single holistic conversation without attributing statements to specific speakers.
 
