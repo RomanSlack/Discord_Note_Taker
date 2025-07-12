@@ -8,7 +8,7 @@ import AudioAnalyzer from './audio-analyzer';
 import AudioStorage from './audio-storage';
 import QualityMonitor from './quality-monitor';
 import RecordingAnalytics from './analytics';
-import RecordingManager from './recording-manager';
+import { recordingManager } from './recording-manager';
 import { EventEmitter } from 'events';
 
 const logger = createLogger('EnhancedVoiceReceiver');
@@ -52,7 +52,7 @@ export class EnhancedVoiceReceiver extends EventEmitter {
   private audioStorage: AudioStorage;
   private qualityMonitor: QualityMonitor;
   private recordingAnalytics: RecordingAnalytics;
-  private recordingManager: RecordingManager;
+  // Using singleton recordingManager instead of private instance
 
   // State
   private isInitialized: boolean = false;
@@ -112,13 +112,7 @@ export class EnhancedVoiceReceiver extends EventEmitter {
         exportDirectory: `${this.configuration.storageLocation}/analytics`
       });
 
-      // Initialize recording manager
-      this.recordingManager = new RecordingManager({
-        enableAudioProcessing: this.configuration.enableAudioProcessing,
-        outputFormat: this.configuration.outputFormat,
-        storageLocation: this.configuration.storageLocation,
-        processingOptions: this.configuration.processingOptions
-      });
+      // Recording manager is singleton - no initialization needed
 
       this.setupEventHandlers();
 
@@ -534,7 +528,7 @@ export class EnhancedVoiceReceiver extends EventEmitter {
         this.audioStorage.cleanup(),
         this.qualityMonitor.cleanup(),
         this.recordingAnalytics.cleanup(),
-        this.recordingManager.cleanup()
+        recordingManager.cleanup()
       ];
 
       await Promise.allSettled(cleanupPromises);

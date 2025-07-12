@@ -6,6 +6,7 @@ import {
 } from '@discordjs/voice';
 import { User, Client } from 'discord.js';
 import { createLogger, withLogging } from '@utils/logger';
+import { recordingManager } from './recording-manager';
 import { config } from '@config/environment';
 import { settingsManager } from '@config/settings';
 import * as fs from 'fs';
@@ -36,16 +37,18 @@ export interface AudioSegment {
 export class VoiceReceiver extends EventEmitter {
   private receiver: DiscordVoiceReceiver;
   private client: Client;
+  private guildId: string;
   private activeStreams: Map<string, AudioStream> = new Map();
   private isInitialized: boolean = false;
   private readonly segmentWindow: number = config.segmentWindowSec * 1000; // Convert to ms
   private segmentTimer: NodeJS.Timeout | null = null;
   private audioSegments: AudioSegment[] = [];
 
-  constructor(connection: VoiceConnection, client: Client) {
+  constructor(connection: VoiceConnection, client: Client, guildId: string) {
     super();
     this.receiver = connection.receiver;
     this.client = client;
+    this.guildId = guildId;
   }
 
   public async initialize(): Promise<void> {
@@ -256,6 +259,9 @@ export class VoiceReceiver extends EventEmitter {
         await this.saveAudioSegmentToFile(audioSegment);
       }
 
+      // Check if recording is active and save to recording session
+      await this.saveToRecordingSession(audioSegment);
+
       // Emit event for transcription processing
       this.emitAudioSegmentEvent(audioSegment);
 
@@ -285,6 +291,44 @@ export class VoiceReceiver extends EventEmitter {
 
     } catch (error) {
       logger.error('Failed to save audio segment to file:', error);
+    }
+  }
+
+  private async saveToRecordingSession(segment: AudioSegment): Promise<void> {
+    try {
+      // Check if recording is active for this guild
+      const recordingSession = recordingManager.getRecordingSession(this.guildId);
+      if (!recordingSession) {
+        // No active recording session
+        return;
+      }
+
+      // Save audio segment to recording session
+      // For now, we'll save to the recording directory structure
+      const sessionDir = `./recordings/${recordingSession.sessionId}`;
+      const userDir = `${sessionDir}/${segment.userId}-${segment.username}`;
+      
+      // Ensure directories exist
+      await fs.promises.mkdir(userDir, { recursive: true });
+      
+      // Create filename with timestamp
+      const timestamp = segment.startTime.toISOString().replace(/[:.]/g, '-');
+      const filename = `segment-${timestamp}.pcm`;
+      const filepath = `${userDir}/${filename}`;
+      
+      // Write audio data
+      await fs.promises.writeFile(filepath, segment.audioData);
+      
+      logger.info('Audio segment saved to recording session', {
+        sessionId: recordingSession.sessionId,
+        userId: segment.userId,
+        username: segment.username,
+        duration: segment.duration,
+        filepath
+      });
+
+    } catch (error) {
+      logger.error('Failed to save audio segment to recording session:', error);
     }
   }
 

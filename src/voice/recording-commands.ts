@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits } from 'discord.js';
 import { createLogger } from '@utils/logger';
 import { voiceConnectionManager } from '@voice/connection';
-import RecordingManager from '@voice/recording-manager';
+import { recordingManager } from '@voice/recording-manager';
 import AudioStorage from '@voice/audio-storage';
 import AudioAnalyzer from '@voice/audio-analyzer';
 import { RecordingState } from '@voice/multitrack-recorder';
@@ -9,7 +9,7 @@ import { RecordingState } from '@voice/multitrack-recorder';
 const logger = createLogger('RecordingCommands');
 
 // Global instances (in a real app, these would be managed by a DI container)
-const recordingManager = new RecordingManager();
+// Using singleton recordingManager from recording-manager module
 const audioStorage = new AudioStorage();
 const audioAnalyzer = new AudioAnalyzer();
 

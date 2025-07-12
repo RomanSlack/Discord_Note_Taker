@@ -15,6 +15,7 @@ import { createLogger, withLogging } from '@utils/logger';
 import { config } from '@config/environment';
 import { settingsManager } from '@config/settings';
 import { VoiceReceiver } from './receiver';
+import { recordingManager } from './recording-manager';
 
 const logger = createLogger('VoiceConnection');
 
@@ -94,7 +95,7 @@ export class VoiceConnectionManager {
       const player = createAudioPlayer();
 
       // Create voice receiver for audio capture
-      const receiver = new VoiceReceiver(connection, this.client!);
+      const receiver = new VoiceReceiver(connection, this.client!, guildId);
 
       // Set up connection event handlers
       this.setupConnectionEventHandlers(connection, guildId);
