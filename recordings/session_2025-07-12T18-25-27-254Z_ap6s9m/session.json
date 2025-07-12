@@ -1,0 +1,25 @@
+{
+  "session": {
+    "sessionId": "session_2025-07-12T18-25-27-254Z_ap6s9m",
+    "guildId": "1393645214308110530",
+    "channelId": "1393645215985958915",
+    "channelName": "General",
+    "startTime": "2025-07-12T18:25:27.254Z",
+    "endTime": "2025-07-12T18:25:43.280Z",
+    "totalDuration": 16026,
+    "state": "stopped"
+  },
+  "participants": [],
+  "segments": [],
+  "metadata": {
+    "sampleRate": 48000,
+    "channels": 2,
+    "bitDepth": 16,
+    "packetDuration": 20,
+    "maxParticipants": 0,
+    "averageParticipants": 0,
+    "totalSpeechTime": 0,
+    "totalSilenceTime": 16026,
+    "audioQuality": "medium"
+  }
+}
