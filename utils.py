@@ -2,7 +2,9 @@ import os, subprocess, tempfile, uuid
 from pathlib import Path
 from openai import OpenAI
 from fpdf import FPDF
+from dotenv import load_dotenv
 
+load_dotenv()
 client = OpenAI()
 
 def combine_audio(wav_files: list[Path]) -> Path:
